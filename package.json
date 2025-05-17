@@ -5,7 +5,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri:dev": "cargo tauri dev ",
+    "clean": "cd src-tauri && cargo clean"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.5.0",
