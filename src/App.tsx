@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { load } from "@tauri-apps/plugin-store";
 
 function App() {
   const [copied, setCopied] = useState(false);
@@ -10,6 +11,15 @@ function App() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const initializeStore = async () => {
+    const store = await load("store.json", { autoSave: false });
+    const val = await store.get<{ value: number }>("some-key");
+    console.log(val); // { value: 5 }
+    await store.save();
+  };
+
+  initializeStore();
+  ///
   return (
     <div className="p-4 text-white bg-gray-900 h-screen">
       <h1 className="text-xl font-bold mb-4">常用指令</h1>
