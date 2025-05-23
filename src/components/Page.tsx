@@ -92,7 +92,7 @@ export function MemoApp() {
     "all" | "content" | "title" | "tags"
   >("all");
 
-  const addNewBlock = () => {
+  const addNewBlock = (tag: string) => {
     const newId = Date.now().toString();
     setMemoBlocks([
       ...memoBlocks,
@@ -100,7 +100,7 @@ export function MemoApp() {
         id: newId,
         title: "新備忘錄",
         content: "",
-        tags: ["未分類"],
+        tags: [tag],
         format: "auto",
         showLineNumbers: false,
         height: 200,
@@ -649,7 +649,11 @@ export function MemoApp() {
       </div>
 
       <div className="mt-6 flex justify-center">
-        <Button onClick={addNewBlock}>
+        <Button
+          onClick={() =>
+            addNewBlock(activeTab === "all" ? "未分類" : activeTab)
+          }
+        >
           <Plus className="h-4 w-4 mr-2" />
           新增區塊
         </Button>
