@@ -5,8 +5,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "tauri:dev": "cargo tauri dev ",
-    "clean": "cd src-tauri && cargo clean"
+    "cargo:dev": "cargo tauri dev ",
+    "clean": "cd src-tauri && cargo clean",
+    "cargo:build": "cd src-tauri && cargo tauri build"
   },
   "dependencies": {
     "@codemirror/lang-cpp": "^6.0.2",

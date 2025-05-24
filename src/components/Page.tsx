@@ -37,8 +37,6 @@ import { CodeEditor } from "../components/code-editor";
 import { Toggle } from "@/components/ui/toggle";
 import { SearchInput } from "@/components/search-input";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { language } from "@codemirror/language";
-
 interface MemoBlock {
   id: string;
   title: string;
@@ -375,47 +373,53 @@ export function MemoApp({ initialMemos, onMemosUpdate }: MemoAppProps) {
   const addTagToBlock = (blockId: string, tag: string) => {
     if (!tag.trim()) return;
 
-    // Add to available tags if it's new
-    if (!availableTags.includes(tag)) {
-      setAvailableTags([...availableTags, tag]);
-    }
+    // 檢查區塊是否存在，以及標籤是否已存在
+    const block = memoBlocks.find((block) => block.id === blockId);
+    if (!block) return;
 
-    // Add tag to the block if it doesn't already have it
+    // 如果標籤已存在，則不添加
+    if (block.tags.includes(tag)) return;
+
+    // 計算更新後的標籤列表
+    const updatedTags = [...block.tags, tag];
+
+    // 更新本地狀態
     setMemoBlocks(
-      memoBlocks.map((block) => {
-        if (block.id === blockId && !block.tags.includes(tag)) {
-          return { ...block, tags: [...block.tags, tag] };
-        }
-        return block;
-      })
+      memoBlocks.map((b) =>
+        b.id === blockId ? { ...b, tags: updatedTags } : b
+      )
     );
 
+    // 清空新標籤輸入框
     setNewTag("");
-    updateMemo(blockId, {
-      tags: [
-        ...(memoBlocks.find((block) => block.id === blockId)?.tags || []),
-        tag,
-      ],
-    });
+
+    // 使用已計算的標籤列表更新持久化狀態
+    updateMemo(blockId, { tags: updatedTags });
   };
 
   const removeTagFromBlock = (blockId: string, tagToRemove: string) => {
+    // 找到要修改的區塊
+    const block = memoBlocks.find((block) => block.id === blockId);
+    if (!block) return;
+
+    // 計算更新後的標籤
+    let updatedTags = block.tags.filter((tag) => tag !== tagToRemove);
+    if (updatedTags.length === 0) {
+      updatedTags = ["未分類"];
+    }
+
+    // 更新本地狀態
     setMemoBlocks(
       memoBlocks.map((block) => {
         if (block.id === blockId) {
-          // Ensure at least one tag remains
-          const updatedTags = block.tags.filter((tag) => tag !== tagToRemove);
-          if (updatedTags.length === 0) {
-            return { ...block, tags: ["未分類"] };
-          }
           return { ...block, tags: updatedTags };
         }
         return block;
       })
     );
-    updateMemo(blockId, {
-      tags: memoBlocks.find((block) => block.id === blockId)?.tags || [],
-    });
+
+    // 更新持久化狀態，使用已計算的標籤
+    updateMemo(blockId, { tags: updatedTags });
   };
 
   // Search functionality
@@ -521,7 +525,13 @@ export function MemoApp({ initialMemos, onMemosUpdate }: MemoAppProps) {
 
     return blocks;
   }, [memoBlocks, activeTab, searchTerm, searchScope]);
-
+  // 使用 useMemo 從當前的 memoBlocks 中提取所有唯一標籤
+  const uniqueTags = useMemo(() => {
+    // 收集所有標籤
+    const allTags = memoBlocks.flatMap((block) => block.tags);
+    // 去重並排序
+    return [...new Set(allTags)].sort();
+  }, [memoBlocks]);
   return (
     <div className="container mx-auto p-4 max-w-[800px] min-h-[600px]">
       <div className="flex justify-between items-center mb-4">
@@ -559,7 +569,7 @@ export function MemoApp({ initialMemos, onMemosUpdate }: MemoAppProps) {
       >
         <TabsList className="mb-2 flex flex-wrap h-auto">
           <TabsTrigger value="all">全部</TabsTrigger>
-          {availableTags.map((tag) => (
+          {uniqueTags.map((tag) => (
             <TabsTrigger key={tag} value={tag} disabled={!!searchTerm}>
               {tag}
             </TabsTrigger>
