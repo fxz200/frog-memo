@@ -6,12 +6,24 @@ import { useTheme } from "@/components/theme-provider";
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { markdown } from "@codemirror/lang-markdown";
+import { cpp } from "@codemirror/lang-cpp";
 import { sql } from "@codemirror/lang-sql";
 import { json } from "@codemirror/lang-json";
+import { css } from "@codemirror/lang-css";
+import { python } from "@codemirror/lang-python";
+import { html } from "@codemirror/lang-html";
+import { yaml } from "@codemirror/lang-yaml";
+import { go } from "@codemirror/lang-go";
+import { rust } from "@codemirror/lang-rust";
+import { java } from "@codemirror/lang-java";
+import { php } from "@codemirror/lang-php";
+import { StreamLanguage } from "@codemirror/language";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { search, searchKeymap } from "@codemirror/search";
 import { EditorView } from "@codemirror/view";
 import { EditorSelection } from "@codemirror/state";
+import { shell } from "@codemirror/legacy-modes/mode/shell";
+import { groovy } from "@codemirror/legacy-modes/mode/groovy";
 interface CodeEditorProps {
   value: string;
   onChange: (value: string) => void;
@@ -52,50 +64,6 @@ export function CodeEditor({
     }
   };
 
-  const searchHighlighter = (searchTerm: string) => {
-    if (!searchTerm) return [];
-
-    return [
-      // 使用 EditorView 設置高亮樣式
-      EditorView.theme({
-        ".cm-highlight": {
-          backgroundColor: "rgba(255, 255, 0, 0.3)",
-        },
-        "&dark .cm-highlight": {
-          backgroundColor: "rgba(255, 255, 0, 0.2)",
-        },
-      }),
-      // 使用 EditorView.updateListener 自動高亮匹配
-      EditorView.updateListener.of((update) => {
-        if (update.docChanged && searchTerm) {
-          const view = update.view;
-          const doc = view.state.doc.toString();
-          const regex = new RegExp(
-            searchTerm.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&"),
-            "gi"
-          );
-
-          // 查找並高亮所有匹配項
-          let match;
-          const ranges = [];
-          while ((match = regex.exec(doc)) !== null) {
-            ranges.push(
-              EditorSelection.range(match.index, match.index + match[0].length)
-            );
-          }
-
-          // 應用高亮
-          if (ranges.length > 0) {
-            view.dispatch({
-              selection: EditorSelection.create(ranges),
-              effects: EditorView.scrollIntoView(ranges[0]),
-            });
-          }
-        }
-      }),
-    ];
-  };
-
   // 響應大小變化
   useEffect(() => {
     const resizeObserver = new ResizeObserver(() => {
@@ -113,11 +81,31 @@ export function CodeEditor({
 
   const getLanguageExtension = () => {
     switch (language) {
+      case "groovy":
+        return StreamLanguage.define(groovy);
+      case "shell":
+        return StreamLanguage.define(shell);
+      case "css":
+        return css();
+      case "cpp":
+        return cpp();
+      case "python":
+        return python();
+      case "html":
+        return html();
+      case "yaml":
+        return yaml();
+      case "go":
+        return go();
+      case "rust":
+        return rust();
+      case "java":
+        return java();
+      case "php":
+        return php();
       case "javascript":
-      case "js":
         return javascript();
       case "markdown":
-      case "md":
         return markdown();
       case "sql":
         return sql();
@@ -129,38 +117,23 @@ export function CodeEditor({
   };
   const mappedTheme = theme === "dark" ? oneDark : "light";
 
-  // 在 getLanguageExtension 函數後添加這個新函數
   const getCustomTheme = () => {
     return EditorView.theme({
-      // 設置編輯器文本的主色調
-      "&": {
-        color: theme === "dark" ? "#a31515" : "#333333",
+      // basic
+      ".ͼq": {
+        color: theme === "dark" ? "#e06c" : "",
+      },
+      // 關鍵字
+      ".ͼl": {
+        color: theme === "dark" ? "#569cd6" : "#d73a49",
+      },
+      //bool
+      ".ͼc": {
+        color: theme === "dark" ? "#b5cea8" : "#005cc5",
       },
       // 設置註釋的顏色
-      // 設置字符串的顏色
-      ".cm-string": {
-        color: theme === "dark" ? "#a31515" : "#a31515",
-      },
-      // 設置關鍵字的顏色
-      ".cm-keyword": {
-        color: "magenta",
-        fontWeight: "bold", // 添加粗體以更明顯
-      },
-      // 設置數字的顏色
-      ".cm-number": {
-        color: theme === "dark" ? "#a31515" : "#098658",
-      },
-      // 設置運算符的顏色
-      ".cm-operator": {
-        color: theme === "dark" ? "#a31515" : "#000000",
-      },
-      // 設置變量名的顏色
-      ".cm-variableName": {
-        color: theme === "dark" ? "#a31515" : "#001080",
-      },
-      // 設置函數名的顏色
-      ".cm-propertyName": {
-        color: theme === "dark" ? "#a31515" : "#795e26",
+      ".ͼm": {
+        color: theme === "dark" ? "#6a9955" : "#008000",
       },
     });
   };
@@ -187,7 +160,6 @@ export function CodeEditor({
             getCustomTheme(),
             //  ...searchHighlighter(searchTerm),
           ]}
-          // theme={mappedTheme}
           theme={combinedTheme}
           basicSetup={{
             lineNumbers: showLineNumbers,

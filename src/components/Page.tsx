@@ -37,6 +37,7 @@ import { CodeEditor } from "../components/code-editor";
 import { Toggle } from "@/components/ui/toggle";
 import { SearchInput } from "@/components/search-input";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { language } from "@codemirror/language";
 
 interface MemoBlock {
   id: string;
@@ -47,7 +48,10 @@ interface MemoBlock {
   showLineNumbers: boolean;
   height: number;
 }
-
+interface MemoAppProps {
+  initialMemos: MemoBlock[];
+  onMemosUpdate: (memos: MemoBlock[]) => void;
+}
 const FORMAT_OPTIONS = [
   { value: "auto", label: "自動檢測" },
   { value: "json", label: "JSON" },
@@ -58,32 +62,31 @@ const FORMAT_OPTIONS = [
   { value: "css", label: "CSS" },
   { value: "sql", label: "SQL" },
   { value: "markdown", label: "Markdown" },
-  { value: "xml", label: "XML" },
   { value: "python", label: "Python" },
   { value: "java", label: "Java" },
-  { value: "csharp", label: "C#" },
   { value: "cpp", label: "C++" },
   { value: "go", label: "Go" },
   { value: "rust", label: "Rust" },
   { value: "php", label: "PHP" },
-  { value: "ruby", label: "Ruby" },
-  { value: "swift", label: "Swift" },
-  { value: "kotlin", label: "Kotlin" },
+  { value: "shell", label: "Shell" },
+  { value: "groovy", label: "Groovy" },
   { value: "plaintext", label: "純文本" },
 ];
 
-export function MemoApp() {
-  const [memoBlocks, setMemoBlocks] = useState<MemoBlock[]>([
-    {
-      id: "1",
-      title: "新備忘錄",
-      content: "",
-      tags: ["未分類"],
-      format: "auto",
-      showLineNumbers: false,
-      height: 200,
-    },
-  ]);
+export function MemoApp({ initialMemos, onMemosUpdate }: MemoAppProps) {
+  const [memoBlocks, setMemoBlocks] = useState<MemoBlock[]>(initialMemos);
+  // 更新 memoBlocks 的函數，同時呼叫 onMemosUpdate
+  const updateMemos = (newMemos: MemoBlock[]) => {
+    setMemoBlocks(newMemos);
+    onMemosUpdate(newMemos);
+  };
+  // 更新現有備忘錄的函數
+  const updateMemo = (id: string, updates: Partial<MemoBlock>) => {
+    const updatedMemos = memoBlocks.map((memo) =>
+      memo.id === id ? { ...memo, ...updates } : memo
+    );
+    updateMemos(updatedMemos);
+  };
   const [availableTags, setAvailableTags] = useState<string[]>(["未分類"]);
   const [newTag, setNewTag] = useState("");
   const [activeTab, setActiveTab] = useState("all");
@@ -106,6 +109,19 @@ export function MemoApp() {
         height: 200,
       },
     ]);
+    const updatedMemos = [
+      ...memoBlocks,
+      {
+        id: newId,
+        title: "新備忘錄",
+        content: "",
+        tags: [tag],
+        format: "auto",
+        showLineNumbers: false,
+        height: 200,
+      },
+    ];
+    updateMemos(updatedMemos);
   };
 
   const updateBlockContent = (id: string, content: string) => {
@@ -114,12 +130,14 @@ export function MemoApp() {
         block.id === id ? { ...block, content } : block
       )
     );
+    updateMemo(id, { content });
   };
 
   const updateBlockTitle = (id: string, title: string) => {
     setMemoBlocks(
       memoBlocks.map((block) => (block.id === id ? { ...block, title } : block))
     );
+    updateMemo(id, { title });
   };
 
   const updateBlockFormat = (id: string, format: string) => {
@@ -128,6 +146,7 @@ export function MemoApp() {
         block.id === id ? { ...block, format } : block
       )
     );
+    updateMemo(id, { format });
   };
 
   const toggleLineNumbers = (id: string) => {
@@ -146,10 +165,13 @@ export function MemoApp() {
         block.id === id ? { ...block, height: Math.max(100, height) } : block
       )
     );
+    updateMemo(id, { height });
   };
 
   const deleteBlock = (id: string) => {
     setMemoBlocks(memoBlocks.filter((block) => block.id !== id));
+    const updatedMemos = memoBlocks.filter((memo) => memo.id !== id);
+    updateMemos(updatedMemos);
   };
 
   const copyToClipboard = (text: string) => {
@@ -187,52 +209,152 @@ export function MemoApp() {
   };
 
   const detectFormat = (content: string): string => {
-    // Try to detect JSON
+    // 用於空內容的情況
+    if (!content.trim()) return "plaintext";
+
+    // 標準化內容（針對檢測）
+    const trimmedContent = content.trim();
+
+    // 嘗試檢測 JSON
     try {
-      JSON.parse(content);
+      JSON.parse(trimmedContent);
       return "json";
     } catch (e) {
-      // Not JSON
+      // 不是 JSON
     }
 
-    // Simple YAML detection (starts with key: value pattern)
-    if (/^[\w\s]+:[\s\w]/.test(content)) {
+    // YAML 檢測
+    if (
+      /^[\w\s]+:[\s\w]/.test(trimmedContent) &&
+      /:\s*[\w\s\.]+(\n|$)/.test(trimmedContent)
+    ) {
       return "yaml";
     }
 
-    // Simple JavaScript detection
-    if (/(function|const|let|var|=>)/.test(content)) {
+    // JavaScript 檢測
+    if (
+      /(let|const|function|=>|\bif\s*\(|\bfor\s*\(|console\.log|document\.|window\.)/.test(
+        trimmedContent
+      ) &&
+      !/(^\s*<|^\s*#include|^\s*import\s+[\w\.]+;|^\s*package\s+[\w\.]+;)/.test(
+        trimmedContent
+      )
+    ) {
       return "javascript";
     }
 
-    // Simple TypeScript detection
-    if (/(interface|type|:[\s]*(string|number|boolean))/.test(content)) {
+    // TypeScript 檢測
+    if (
+      /(interface|type|:[\s]*(string|number|boolean)|<[\w<>]+>)/.test(
+        trimmedContent
+      )
+    ) {
       return "typescript";
     }
 
-    // Simple HTML detection
-    if (/<\/?[a-z][\s\S]*>/i.test(content)) {
+    // HTML 檢測
+    if (
+      /<\/?[a-z][\s\S]*>/i.test(trimmedContent) &&
+      /<(html|body|div|span|h1|p|a|img)[\s>]/.test(trimmedContent)
+    ) {
       return "html";
     }
 
-    // Simple CSS detection
-    if (/{[\s\S]*:[\s\S]*;[\s\S]*}/.test(content)) {
+    // CSS 檢測
+    if (
+      /([\.\#][\w-]+\s*\{|body\s*\{|@media|@keyframes|margin:|padding:|color:|background:)/.test(
+        trimmedContent
+      ) &&
+      /\{[\s\S]*\}/.test(trimmedContent)
+    ) {
       return "css";
     }
 
-    // Simple SQL detection
+    // SQL 檢測
     if (
       /(SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER)[\s\S]*(FROM|INTO|TABLE|DATABASE)/i.test(
-        content
+        trimmedContent
       )
     ) {
       return "sql";
     }
+    // Shell 腳本檢測（增強版）
+    if (
+      /(^|\n\s*)(#!\/bin\/(ba)?sh|apt|sudo|echo|export|cd|ls|grep|mkdir|rm|cp|chmod|chown|if\s+\[|for\s+\w+\s+in|while\s+\[|function\s+\w+\(\)|source|\.\/|\$\{|\$\(|&&|\|\|)/.test(
+        trimmedContent
+      )
+    ) {
+      return "shell";
+    }
+    // Python 檢測
+    if (
+      /(def |import |from .+ import|class .+:|if __name__ == ['"]__main__['"]|print\()/.test(
+        trimmedContent
+      ) &&
+      !/\{|\}|;$/.test(trimmedContent)
+    ) {
+      return "python";
+    }
 
-    // Default to plain text if can't detect
+    // Java 檢測
+    if (
+      /(public\s+(class|interface)|import\s+java\.|package\s+[\w\.]+;|@Override|class\s+\w+\s+(\{|extends))/.test(
+        trimmedContent
+      )
+    ) {
+      return "java";
+    }
+
+    // C++ 檢測
+    if (
+      /(#include\s*<[\w\.]+>|using namespace|std::|int main\(\))/.test(
+        trimmedContent
+      )
+    ) {
+      return "cpp";
+    }
+
+    // Go 檢測
+    if (
+      /(package\s+[\w\.]+|func\s+\w+\(|import\s+\(|type\s+\w+\s+struct)/.test(
+        trimmedContent
+      )
+    ) {
+      return "go";
+    }
+
+    // Rust 檢測
+    if (
+      /(fn\s+\w+|let\s+mut|impl\s+|use\s+[\w:]+;|\->\s*[\w:<>]+)/.test(
+        trimmedContent
+      ) &&
+      /[\w\s]+\{\s*$/.test(trimmedContent)
+    ) {
+      return "rust";
+    }
+
+    // PHP 檢測
+    if (
+      /(<\?php|\$\w+\s*=|function\s+\w+\s*\(|namespace\s+[\w\\]+;|use\s+[\w\\]+;)/.test(
+        trimmedContent
+      )
+    ) {
+      return "php";
+    }
+
+    // Groovy 檢測
+    if (
+      /(def\s+\w+\s*=|class\s+\w+|import\s+[\w\.]+|@\w+)/.test(
+        trimmedContent
+      ) &&
+      !/<\?php/.test(trimmedContent)
+    ) {
+      return "groovy";
+    }
+
+    // 無法檢測，默認為純文本
     return "plaintext";
   };
-
   const getFormatLabel = (format: string): string => {
     const option = FORMAT_OPTIONS.find((opt) => opt.value === format);
     return option ? option.label : format.toUpperCase();
@@ -269,6 +391,12 @@ export function MemoApp() {
     );
 
     setNewTag("");
+    updateMemo(blockId, {
+      tags: [
+        ...(memoBlocks.find((block) => block.id === blockId)?.tags || []),
+        tag,
+      ],
+    });
   };
 
   const removeTagFromBlock = (blockId: string, tagToRemove: string) => {
@@ -285,6 +413,9 @@ export function MemoApp() {
         return block;
       })
     );
+    updateMemo(blockId, {
+      tags: memoBlocks.find((block) => block.id === blockId)?.tags || [],
+    });
   };
 
   // Search functionality
@@ -394,7 +525,7 @@ export function MemoApp() {
   return (
     <div className="container mx-auto p-4 max-w-[800px] min-h-[600px]">
       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">frog MEMO</h1>
+        <h1 className="text-2xl font-bold">Frog MEMO</h1>
         <div className="flex items-center gap-2">
           <Button
             variant="outline"

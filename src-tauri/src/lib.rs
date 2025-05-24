@@ -1,6 +1,5 @@
 
 use tauri_plugin_store::StoreExt;
-use serde_json::json;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -13,10 +12,7 @@ pub fn run() {
                 use tauri_plugin_global_shortcut::{
                     Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState,
                 };
-                let store = app.store("store.json")?;
-                store.set("some-key", json!({ "value": 5 }));
-                let value = store.get("some-key").expect("Failed to get value from store");
-                println!("{}", value); 
+                let _store = app.store("store.json")?;
                 let ctrl_n_shortcut = Shortcut::new(Some(Modifiers::CONTROL), Code::KeyN);
                 app.handle().plugin(
                     tauri_plugin_global_shortcut::Builder::new()
