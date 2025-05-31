@@ -1,7 +1,4 @@
-"use client";
-
-import type React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useTheme } from "@/components/theme-provider";
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
@@ -19,11 +16,10 @@ import { java } from "@codemirror/lang-java";
 import { php } from "@codemirror/lang-php";
 import { StreamLanguage } from "@codemirror/language";
 import { oneDark } from "@codemirror/theme-one-dark";
-import { search, searchKeymap } from "@codemirror/search";
 import { EditorView } from "@codemirror/view";
-import { EditorSelection } from "@codemirror/state";
 import { shell } from "@codemirror/legacy-modes/mode/shell";
 import { groovy } from "@codemirror/legacy-modes/mode/groovy";
+
 interface CodeEditorProps {
   value: string;
   onChange: (value: string) => void;
@@ -39,10 +35,8 @@ export function CodeEditor({
   value,
   onChange,
   language = "json",
-  placeholder,
   showLineNumbers = false,
-  height = 200,
-  searchTerm = "",
+  height = 150,
 }: CodeEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const highlightRef = useRef<HTMLPreElement>(null);
@@ -115,7 +109,6 @@ export function CodeEditor({
         return javascript();
     }
   };
-  const mappedTheme = theme === "dark" ? oneDark : "light";
 
   const getCustomTheme = () => {
     return EditorView.theme({
@@ -127,7 +120,7 @@ export function CodeEditor({
       ".ͼl": {
         color: theme === "dark" ? "#569cd6" : "#d73a49",
       },
-      //bool
+      // bool
       ".ͼc": {
         color: theme === "dark" ? "#b5cea8" : "#005cc5",
       },
@@ -150,16 +143,11 @@ export function CodeEditor({
       <div
         className={`relative flex-grow ${showLineNumbers ? "border-l" : ""}`}
       >
-        {/* 可編輯的文本區域 */}
         <CodeMirror
           value={value}
           height={`${height}px`}
           onChange={onChange}
-          extensions={[
-            getLanguageExtension(),
-            getCustomTheme(),
-            //  ...searchHighlighter(searchTerm),
-          ]}
+          extensions={[getLanguageExtension(), getCustomTheme()]}
           theme={combinedTheme}
           basicSetup={{
             lineNumbers: showLineNumbers,

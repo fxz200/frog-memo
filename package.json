@@ -7,7 +7,11 @@
     "preview": "vite preview",
     "cargo:dev": "cargo tauri dev ",
     "clean": "cd src-tauri && cargo clean",
-    "cargo:build": "cd src-tauri && cargo tauri build"
+    "cargo:build": "cd src-tauri && cargo tauri build && xcopy .\\target\\release\\frog-memo.exe ..\\. /Y",
+    "cargo:build:exe": "cd src-tauri && cargo tauri build && xcopy .\\target\\release\\bundle\\nsis\\frog-memo_1.0.0_x64-setup.exe*.exe ..\\. /Y",
+    "cargo:build:msi": "cd src-tauri && cargo tauri build && xcopy .\\target\\release\\bundle\\msi\\frog-memo_1.0.0_x64-setup.exe*.msi ..\\. /Y",
+    "cargo:build:mac": "cd src-tauri && cargo tauri build && cp -R ./target/release/bundle/macos/frog-memo.app ../.",
+    "cargo:build:mac-dmg": "cd src-tauri && cargo tauri build && cp ./target/release/bundle/dmg/frog-memo_1.0.0_x64-setup.exe*.dmg ../."
   },
   "dependencies": {
     "@codemirror/lang-cpp": "^6.0.2",
@@ -44,7 +48,8 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "tailwind-merge": "^3.3.0",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@types/js-beautify": "^1.14.3",

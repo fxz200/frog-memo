@@ -3,3 +3,8 @@ node_modules
 #cargo
 src-tauri/target/
 src-tauri/gen/schemas
+
+frog-memo_*.exe
+frog-memo_*.msi
+frog-memo_*.dmg
+frog-memo.app

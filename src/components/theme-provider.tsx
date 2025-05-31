@@ -16,31 +16,22 @@ type ThemeContextType = {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: ThemeProviderProps) {
-  // 檢查本地存儲或系統偏好
   const [theme, setTheme] = useState<Theme>(() => {
-    // 嘗試從本地存儲獲取主題
     if (typeof localStorage !== "undefined") {
       const savedTheme = localStorage.getItem("theme") as Theme;
       if (savedTheme) return savedTheme;
     }
-
-    // 否則使用系統偏好
     if (typeof window !== "undefined") {
       return window.matchMedia("(prefers-color-scheme: dark)").matches
         ? "dark"
         : "light";
     }
-
-    return "light"; // 默認主題
+    return "light";
   });
 
   useEffect(() => {
     const root = window.document.documentElement;
-
-    // 移除所有可能的主題類
     root.classList.remove("light", "dark");
-
-    // 添加當前主題類
     if (theme === "system") {
       const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
         .matches
@@ -50,8 +41,6 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     } else {
       root.classList.add(theme);
     }
-
-    // 保存到本地存儲
     localStorage.setItem("theme", theme);
   }, [theme]);
 

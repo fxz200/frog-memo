@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useMemo } from "react";
 import {
   Copy,
@@ -37,6 +35,10 @@ import { CodeEditor } from "../components/code-editor";
 import { Toggle } from "@/components/ui/toggle";
 import { SearchInput } from "@/components/search-input";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { v4 as uuidv4 } from "uuid";
+import { detectFormat, canBeautify } from "@/lib/detectFormat";
+import { FORMAT_OPTIONS } from "@/constants/formats";
+
 interface MemoBlock {
   id: string;
   title: string;
@@ -50,42 +52,8 @@ interface MemoAppProps {
   initialMemos: MemoBlock[];
   onMemosUpdate: (memos: MemoBlock[]) => void;
 }
-const FORMAT_OPTIONS = [
-  { value: "auto", label: "自動檢測" },
-  { value: "json", label: "JSON" },
-  { value: "yaml", label: "YAML" },
-  { value: "javascript", label: "JavaScript" },
-  { value: "typescript", label: "TypeScript" },
-  { value: "html", label: "HTML" },
-  { value: "css", label: "CSS" },
-  { value: "sql", label: "SQL" },
-  { value: "markdown", label: "Markdown" },
-  { value: "python", label: "Python" },
-  { value: "java", label: "Java" },
-  { value: "cpp", label: "C++" },
-  { value: "go", label: "Go" },
-  { value: "rust", label: "Rust" },
-  { value: "php", label: "PHP" },
-  { value: "shell", label: "Shell" },
-  { value: "groovy", label: "Groovy" },
-  { value: "plaintext", label: "純文本" },
-];
-
 export function MemoApp({ initialMemos, onMemosUpdate }: MemoAppProps) {
   const [memoBlocks, setMemoBlocks] = useState<MemoBlock[]>(initialMemos);
-  // 更新 memoBlocks 的函數，同時呼叫 onMemosUpdate
-  const updateMemos = (newMemos: MemoBlock[]) => {
-    setMemoBlocks(newMemos);
-    onMemosUpdate(newMemos);
-  };
-  // 更新現有備忘錄的函數
-  const updateMemo = (id: string, updates: Partial<MemoBlock>) => {
-    const updatedMemos = memoBlocks.map((memo) =>
-      memo.id === id ? { ...memo, ...updates } : memo
-    );
-    updateMemos(updatedMemos);
-  };
-  const [availableTags, setAvailableTags] = useState<string[]>(["未分類"]);
   const [newTag, setNewTag] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
@@ -93,33 +61,30 @@ export function MemoApp({ initialMemos, onMemosUpdate }: MemoAppProps) {
     "all" | "content" | "title" | "tags"
   >("all");
 
-  const addNewBlock = (tag: string) => {
-    const newId = Date.now().toString();
-    setMemoBlocks([
-      ...memoBlocks,
-      {
-        id: newId,
-        title: "新備忘錄",
-        content: "",
-        tags: [tag],
-        format: "auto",
-        showLineNumbers: false,
-        height: 200,
-      },
-    ]);
-    const updatedMemos = [
-      ...memoBlocks,
-      {
-        id: newId,
-        title: "新備忘錄",
-        content: "",
-        tags: [tag],
-        format: "auto",
-        showLineNumbers: false,
-        height: 200,
-      },
-    ];
+  const updateMemos = (newMemos: MemoBlock[]) => {
+    setMemoBlocks(newMemos);
+    onMemosUpdate(newMemos);
+  };
+
+  const updateMemo = (id: string, updates: Partial<MemoBlock>) => {
+    const updatedMemos = memoBlocks.map((memo) =>
+      memo.id === id ? { ...memo, ...updates } : memo
+    );
     updateMemos(updatedMemos);
+  };
+
+  const addNewBlock = (tag: string) => {
+    const newId = uuidv4();
+    const newBlock = {
+      id: newId,
+      title: "新備忘錄",
+      content: "",
+      tags: [tag],
+      format: "auto",
+      showLineNumbers: false,
+      height: 200,
+    };
+    updateMemos([...memoBlocks, newBlock]);
   };
 
   const updateBlockContent = (id: string, content: string) => {
@@ -206,209 +171,33 @@ export function MemoApp({ initialMemos, onMemosUpdate }: MemoAppProps) {
     }
   };
 
-  const detectFormat = (content: string): string => {
-    // 用於空內容的情況
-    if (!content.trim()) return "plaintext";
-
-    // 標準化內容（針對檢測）
-    const trimmedContent = content.trim();
-
-    // 嘗試檢測 JSON
-    try {
-      JSON.parse(trimmedContent);
-      return "json";
-    } catch (e) {
-      // 不是 JSON
-    }
-
-    // YAML 檢測
-    if (
-      /^[\w\s]+:[\s\w]/.test(trimmedContent) &&
-      /:\s*[\w\s\.]+(\n|$)/.test(trimmedContent)
-    ) {
-      return "yaml";
-    }
-
-    // JavaScript 檢測
-    if (
-      /(let|const|function|=>|\bif\s*\(|\bfor\s*\(|console\.log|document\.|window\.)/.test(
-        trimmedContent
-      ) &&
-      !/(^\s*<|^\s*#include|^\s*import\s+[\w\.]+;|^\s*package\s+[\w\.]+;)/.test(
-        trimmedContent
-      )
-    ) {
-      return "javascript";
-    }
-
-    // TypeScript 檢測
-    if (
-      /(interface|type|:[\s]*(string|number|boolean)|<[\w<>]+>)/.test(
-        trimmedContent
-      )
-    ) {
-      return "typescript";
-    }
-
-    // HTML 檢測
-    if (
-      /<\/?[a-z][\s\S]*>/i.test(trimmedContent) &&
-      /<(html|body|div|span|h1|p|a|img)[\s>]/.test(trimmedContent)
-    ) {
-      return "html";
-    }
-
-    // CSS 檢測
-    if (
-      /([\.\#][\w-]+\s*\{|body\s*\{|@media|@keyframes|margin:|padding:|color:|background:)/.test(
-        trimmedContent
-      ) &&
-      /\{[\s\S]*\}/.test(trimmedContent)
-    ) {
-      return "css";
-    }
-
-    // SQL 檢測
-    if (
-      /(SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER)[\s\S]*(FROM|INTO|TABLE|DATABASE)/i.test(
-        trimmedContent
-      )
-    ) {
-      return "sql";
-    }
-    // Shell 腳本檢測（增強版）
-    if (
-      /(^|\n\s*)(#!\/bin\/(ba)?sh|apt|sudo|echo|export|cd|ls|grep|mkdir|rm|cp|chmod|chown|if\s+\[|for\s+\w+\s+in|while\s+\[|function\s+\w+\(\)|source|\.\/|\$\{|\$\(|&&|\|\|)/.test(
-        trimmedContent
-      )
-    ) {
-      return "shell";
-    }
-    // Python 檢測
-    if (
-      /(def |import |from .+ import|class .+:|if __name__ == ['"]__main__['"]|print\()/.test(
-        trimmedContent
-      ) &&
-      !/\{|\}|;$/.test(trimmedContent)
-    ) {
-      return "python";
-    }
-
-    // Java 檢測
-    if (
-      /(public\s+(class|interface)|import\s+java\.|package\s+[\w\.]+;|@Override|class\s+\w+\s+(\{|extends))/.test(
-        trimmedContent
-      )
-    ) {
-      return "java";
-    }
-
-    // C++ 檢測
-    if (
-      /(#include\s*<[\w\.]+>|using namespace|std::|int main\(\))/.test(
-        trimmedContent
-      )
-    ) {
-      return "cpp";
-    }
-
-    // Go 檢測
-    if (
-      /(package\s+[\w\.]+|func\s+\w+\(|import\s+\(|type\s+\w+\s+struct)/.test(
-        trimmedContent
-      )
-    ) {
-      return "go";
-    }
-
-    // Rust 檢測
-    if (
-      /(fn\s+\w+|let\s+mut|impl\s+|use\s+[\w:]+;|\->\s*[\w:<>]+)/.test(
-        trimmedContent
-      ) &&
-      /[\w\s]+\{\s*$/.test(trimmedContent)
-    ) {
-      return "rust";
-    }
-
-    // PHP 檢測
-    if (
-      /(<\?php|\$\w+\s*=|function\s+\w+\s*\(|namespace\s+[\w\\]+;|use\s+[\w\\]+;)/.test(
-        trimmedContent
-      )
-    ) {
-      return "php";
-    }
-
-    // Groovy 檢測
-    if (
-      /(def\s+\w+\s*=|class\s+\w+|import\s+[\w\.]+|@\w+)/.test(
-        trimmedContent
-      ) &&
-      !/<\?php/.test(trimmedContent)
-    ) {
-      return "groovy";
-    }
-
-    // 無法檢測，默認為純文本
-    return "plaintext";
-  };
   const getFormatLabel = (format: string): string => {
     const option = FORMAT_OPTIONS.find((opt) => opt.value === format);
     return option ? option.label : format.toUpperCase();
   };
 
-  const canBeautify = (content: string, format: string): boolean => {
-    if (!content.trim()) return false;
-
-    if (format === "auto") {
-      // Try to detect if content can be beautified
-      const detectedFormat = detectFormat(content);
-      return detectedFormat !== "plaintext";
-    }
-
-    return true;
-  };
-
   const addTagToBlock = (blockId: string, tag: string) => {
     if (!tag.trim()) return;
-
-    // 檢查區塊是否存在，以及標籤是否已存在
     const block = memoBlocks.find((block) => block.id === blockId);
     if (!block) return;
-
-    // 如果標籤已存在，則不添加
     if (block.tags.includes(tag)) return;
-
-    // 計算更新後的標籤列表
     const updatedTags = [...block.tags, tag];
-
-    // 更新本地狀態
     setMemoBlocks(
       memoBlocks.map((b) =>
         b.id === blockId ? { ...b, tags: updatedTags } : b
       )
     );
-
-    // 清空新標籤輸入框
     setNewTag("");
-
-    // 使用已計算的標籤列表更新持久化狀態
     updateMemo(blockId, { tags: updatedTags });
   };
 
   const removeTagFromBlock = (blockId: string, tagToRemove: string) => {
-    // 找到要修改的區塊
     const block = memoBlocks.find((block) => block.id === blockId);
     if (!block) return;
-
-    // 計算更新後的標籤
     let updatedTags = block.tags.filter((tag) => tag !== tagToRemove);
     if (updatedTags.length === 0) {
       updatedTags = ["未分類"];
     }
-
-    // 更新本地狀態
     setMemoBlocks(
       memoBlocks.map((block) => {
         if (block.id === blockId) {
@@ -417,24 +206,18 @@ export function MemoApp({ initialMemos, onMemosUpdate }: MemoAppProps) {
         return block;
       })
     );
-
-    // 更新持久化狀態，使用已計算的標籤
     updateMemo(blockId, { tags: updatedTags });
   };
 
-  // Search functionality
   const handleSearch = (term: string) => {
     setSearchTerm(term);
-    // If search is active, switch to "all" tab to show all searchable content
     if (term) {
       setActiveTab("all");
     }
   };
 
-  // Export data to JSON file
   const exportToJson = () => {
     try {
-      // Create a data object with all the memo blocks
       const data = {
         memoBlocks: memoBlocks.map((block) => ({
           id: block.id,
@@ -445,29 +228,17 @@ export function MemoApp({ initialMemos, onMemosUpdate }: MemoAppProps) {
           showLineNumbers: block.showLineNumbers,
           height: block.height,
         })),
-        availableTags,
+        uniqueTags,
       };
-
-      // Convert to JSON string with pretty formatting
       const jsonString = JSON.stringify(data, null, 2);
-
-      // Create a blob with the JSON data
       const blob = new Blob([jsonString], { type: "application/json" });
-
-      // Create a URL for the blob
       const url = URL.createObjectURL(blob);
-
-      // Create a temporary link element
       const link = document.createElement("a");
       link.href = url;
       link.download = "store.json";
-
-      // Append to the document, click it, and remove it
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-
-      // Release the URL object
       URL.revokeObjectURL(url);
 
       toast({
@@ -485,51 +256,37 @@ export function MemoApp({ initialMemos, onMemosUpdate }: MemoAppProps) {
     }
   };
 
-  // Filter blocks based on search and active tab
   const filteredBlocks = useMemo(() => {
     let blocks = memoBlocks;
-
-    // First apply tag filter if not in search mode
     if (!searchTerm && activeTab !== "all") {
       blocks = blocks.filter((block) => block.tags.includes(activeTab));
     }
-
-    // Then apply search filter if search term exists
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       blocks = blocks.filter((block) => {
-        // Search in title
         if (searchScope === "title" || searchScope === "all") {
           if (block.title.toLowerCase().includes(term)) {
             return true;
           }
         }
-
-        // Search in content
         if (searchScope === "content" || searchScope === "all") {
           if (block.content.toLowerCase().includes(term)) {
             return true;
           }
         }
-
-        // Search in tags
         if (searchScope === "tags" || searchScope === "all") {
           if (block.tags.some((tag) => tag.toLowerCase().includes(term))) {
             return true;
           }
         }
-
         return false;
       });
     }
 
     return blocks;
   }, [memoBlocks, activeTab, searchTerm, searchScope]);
-  // 使用 useMemo 從當前的 memoBlocks 中提取所有唯一標籤
   const uniqueTags = useMemo(() => {
-    // 收集所有標籤
     const allTags = memoBlocks.flatMap((block) => block.tags);
-    // 去重並排序
     return [...new Set(allTags)].sort();
   }, [memoBlocks]);
   return (
